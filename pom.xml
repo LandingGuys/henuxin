@@ -11,6 +11,7 @@
     <groupId>com.henu</groupId>
     <artifactId>henuxin</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+    <packaging>jar</packaging>
     <name>henuxin</name>
     <description>Demo project for Spring Boot</description>
 
@@ -29,11 +30,13 @@
             <version>2.1.0</version>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-            <scope>5.1.40</scope>
+            <version>8.0.17</version>
         </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -105,11 +108,13 @@
                 <artifactId>mybatis-generator-maven-plugin</artifactId>
                 <version>1.3.7</version>
                 <dependencies>
+                    <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
                     <dependency>
                         <groupId>mysql</groupId>
                         <artifactId>mysql-connector-java</artifactId>
-                        <version>5.1.40</version>
+                        <version>8.0.17</version>
                     </dependency>
+
                 </dependencies>
             </plugin>
         </plugins>
