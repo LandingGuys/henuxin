@@ -12,7 +12,7 @@ mybatis:
   type-aliases-package: com.henu.henuxin.model
   mapper-locations: classpath:mapper/*.xml
 ####阿里oss
-endpoint: http://oss-cn-beijing.aliyuncs.com
-accessKeyId: LTAIlAHWpVWuoRQH
-accessKeySecret: Zg6oKK5WFdMiN8IEmKPAUWAvGUxfzG
-bucketName: shuixin
+endpoint: **************
+accessKeyId: *************
+accessKeySecret: ***********
+bucketName: ************
