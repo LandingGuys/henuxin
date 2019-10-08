@@ -1,7 +1,9 @@
 package com.henu.henuxin.utils;
 
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Base64Utils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -104,19 +106,19 @@ public class FileUtils {
 //		}
 //	}
 
-//	public static MultipartFile fileToMultipart(String filePath) {
-//		try {
-//			// File转换成MutipartFile
-//			File file = new File(filePath);
-//			FileInputStream inputStream = new FileInputStream(file);
-//			MultipartFile multipartFile = new MockMultipartFile(file.getName(), "png", "image/png", inputStream);
-//			return multipartFile;
-//		} catch (IOException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//			return null;
-//		}
-//	}
+	public static MultipartFile fileToMultipart(String filePath) {
+		try {
+			// File转换成MutipartFile
+			File file = new File(filePath);
+			FileInputStream inputStream = new FileInputStream(file);
+			MultipartFile multipartFile = new MockMultipartFile(file.getName(), "png", "image/png", inputStream);
+			return multipartFile;
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
+	}
 
 	public static void main(String[] args) {
 		// WebFileUtils.createFileByUrl("http://122.152.205.72:88/group1/M00/00/01/CpoxxFr7oIaAZ0rOAAC0d3GKDio580.png",

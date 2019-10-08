@@ -1,13 +1,19 @@
 package com.henu.henuxin.netty;
 
+import com.alibaba.fastjson.JSON;
+import com.henu.henuxin.SpringUtil;
+import com.henu.henuxin.enums.MsgActionEnum;
+import com.henu.henuxin.service.UserService;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.commons.lang3.StringUtils;
 
-import java.time.LocalDateTime;
+import java.util.ArrayList;
 
 /**
  * 
@@ -16,8 +22,9 @@ import java.time.LocalDateTime;
  */
 public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame> {
 
+
 	// 用于记录和管理所有客户端的channle
-	private static ChannelGroup clients = 
+	public static ChannelGroup users =
 			new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 	
 	@Override
@@ -25,20 +32,79 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
 			throws Exception {
 		// 获取客户端传输过来的消息
 		String content = msg.text();
-		System.out.println("接受到的数据：" + content);
-		
-//		for (Channel channel: clients) {
-//			channel.writeAndFlush(
-//				new TextWebSocketFrame(
-//						"[服务器在]" + LocalDateTime.now() 
-//						+ "接受到消息, 消息为：" + content));
-//		}
-		// 下面这个方法，和上面的for循环，一致
-		clients.writeAndFlush(
-				new TextWebSocketFrame(
-						"[服务器在]" + LocalDateTime.now() 
-						+ "接受到消息, 消息为：" + content));
-		
+		Channel currentChannel = ctx.channel();
+		// 1. 获取客户端发来的消息
+		DataContent dataContent= JSON.parseObject(content,DataContent.class);
+		Integer action = dataContent.getAction();
+		// 2. 判断消息类型，根据不同的类型来处理不同的业务
+		if(action== MsgActionEnum.CONNECT.type){
+			// 	2.1  当websocket 第一次open的时候，初始化channel，把用的channel和userid关联起来
+			String senderId = dataContent.getChatMsg().getSenderId();
+			UserChannelRel.put(senderId,currentChannel);
+			// 测试
+			for (Channel c : users) {
+				System.out.println(c.id().asLongText());
+			}
+			UserChannelRel.output();
+		}else if(action==MsgActionEnum.CHAT.type){
+			//  2.2  聊天类型的消息，把聊天记录保存到数据库，同时标记消息的签收状态[未签收]
+			ChatMsg chatMsg = dataContent.getChatMsg();
+			String msgText = chatMsg.getMsg();
+			String receiverId = chatMsg.getReceiverId();
+			String senderId = chatMsg.getSenderId();
+			// 保存消息到数据库，并且标记为 未签收
+			//UserService userService = (UserService)SpringUtil.getBean("userServiceImpl");
+			UserService userService = (UserService)SpringUtil.getApplicationContext().getBean("userServiceImpl");
+			String msgId = userService.saveMsg(chatMsg);
+			chatMsg.setMsgId(msgId);
+			DataContent dataContentMsg = new DataContent();
+			dataContentMsg.setChatMsg(chatMsg);
+			// 发送消息
+			// 从全局用户Channel关系中获取接受方的channel
+			Channel receiverChannel = UserChannelRel.get(receiverId);
+			if(receiverChannel==null){
+				//TODO channel为空代表用户离线，推送消息（JPush，个推，小米推送）
+			}else {
+				// 当receiverChannel不为空的时候，从ChannelGroup去查找对应的channel是否存在
+				Channel findChannel = users.find(receiverChannel.id());
+				if(findChannel!=null){
+					//用户在线
+					receiverChannel.writeAndFlush(
+							new TextWebSocketFrame(
+									JSON.toJSONString(dataContentMsg)
+							)
+					);
+				}else{
+					// 用户离线 TODO 推送消息
+				}
+			}
+
+
+		}else if(action== MsgActionEnum.SIGNED.type){
+			//  2.3  签收消息类型，针对具体的消息进行签收，修改数据库中对应消息的签收状态[已签收]
+			//UserService userService = (UserService)SpringUtil.getBean("userServiceImpl");
+			UserService userService = (UserService)SpringUtil.getApplicationContext().getBean("userServiceImpl");
+			// 扩展字段在signed类型的消息中，代表需要去签收的消息id，逗号间隔
+			String msgIdsStr = dataContent.getExtand();
+			String[] msgIds = msgIdsStr.split(",");
+			ArrayList<String> msgIdList = new ArrayList<>();
+			for (String msgId : msgIds) {
+				if(StringUtils.isNotBlank(msgId)){
+					msgIdList.add(msgId);
+				}
+			}
+
+			System.out.println(msgIdList.toString());
+			if(msgIdList!=null&&!msgIdList.isEmpty() && msgIdList.size()>0){
+				// 批量签收
+				userService.updateMsgSigned(msgIdList);
+			}
+		}else if(action==MsgActionEnum.KEEPALIVE.type){
+			//  2.4  心跳类型的消息
+			System.out.println("收到来自channel为[" + currentChannel + "]的心跳包...");
+		}
+		ctx.flush();
+
 	}
 
 	/**
@@ -47,19 +113,24 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
 	 */
 	@Override
 	public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-		clients.add(ctx.channel());
+		users.add(ctx.channel());
 	}
 
 	@Override
 	public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
+		String channelId = ctx.channel().id().asShortText();
+		System.out.println("客户端被移除，channelId为：" + channelId);
 		// 当触发handlerRemoved，ChannelGroup会自动移除对应客户端的channel
-//		clients.remove(ctx.channel());
-		System.out.println("客户端断开，channle对应的长id为：" 
-							+ ctx.channel().id().asLongText());
-		System.out.println("客户端断开，channle对应的短id为：" 
-							+ ctx.channel().id().asShortText());
+		users.remove(ctx.channel());
 	}
 
-	
-	
+	@Override
+	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+		cause.printStackTrace();
+		//发生异常后关闭连接（关闭channel)，随后从
+		//ChannelGroup中移除
+		ctx.channel().close();
+		//super.exceptionCaught(ctx, cause);
+		users.remove(ctx.channel());
+	}
 }
