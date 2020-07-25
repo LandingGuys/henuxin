@@ -12,7 +12,8 @@ mybatis:
   type-aliases-package: com.henu.henuxin.model
   mapper-locations: classpath:mapper/*.xml
 ####阿里oss
-endpoint: ***************
-accessKeyId: *************
-accessKeySecret: **********
-bucketName: **********
+endpoint: *******
+accessKeyId: 
+accessKeySecret: 
+bucketName: 
+
